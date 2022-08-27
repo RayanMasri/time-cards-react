@@ -1,8 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 import { makeStyles } from '@material-ui/core/styles';
-import DragIcon from '@material-ui/icons/DragIndicatorTwoTone';
-
 import IconButton from '@material-ui/core/IconButton';
 import EditIcon from '@material-ui/icons/Edit';
 import CloseIcon from '@material-ui/icons/Close';
@@ -22,7 +20,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 function Item(props) {
-  let [state, setState] = useState({});
+  let [state, setState] = [null, null];
 
   const classes = useStyles();
   let interval = useRef(null);
@@ -115,151 +113,152 @@ function Item(props) {
         break;
     }
 
-    props.onInterval(interval.current);
+    if (props.item.type != 'note') {
+      props.onInterval(interval.current);
+    }
   }, [props.id]);
 
-  if (props.item.type == 'standard') {
-    const diff = props.item.data - Date.now();
-    let data = {};
+  switch (props.item.type) {
+    case 'standard':
+      const diff = props.item.data - Date.now();
+      let data = {};
 
-    if (diff < 0) {
-      data = { msg: 'Reached' };
-    } else {
-      data = { msg: `Remaining: ${dayjs(props.item.data).toNow(true)}` };
-    }
+      if (diff < 0) {
+        data = { msg: 'Reached' };
+      } else {
+        data = { msg: `Remaining: ${dayjs(props.item.data).toNow(true)}` };
+      }
 
-    [state, setState] = useState(data);
-  } else {
-    [state, setState] = useState(getIntervalData());
+      [state, setState] = useState(data);
+      break;
+    case 'interval':
+      [state, setState] = useState(getIntervalData());
+      break;
   }
 
   return (
     <Draggable
-      key={`${props.nestedIndex}${props.index}`}
-      draggableId={`${props.nestedIndex}${props.index}`}
-      index={props.index}
+      type="ITEM"
+      key={props.item.name}
+      draggableId={props.item.name}
+      index={props.itemIndex}
     >
-      {(provided, snapshot) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          style={{
-            backgroundColor: 'yellow',
-            width: '100%',
-            height: '100%',
-            position: 'relative',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            userSelect: 'none',
-            padding: 10,
-            marginBottom: 10,
-            ...provided.draggableProps.style,
-          }}
-        >
+      {(provided, snapshot) => {
+        return (
           <div
+            ref={provided.innerRef}
+            {...provided.dragHandleProps}
+            {...provided.draggableProps}
             style={{
-              width: '60px',
-              height: 'max-content',
+              backgroundColor: props.item.color || '#D1D1D1',
+              width: '100%',
+              height: '100%',
+              position: 'relative',
               display: 'flex',
-              justifyContent: 'space-between',
-              flexDirection: 'row-reverse',
-              position: 'absolute',
-              padding: 8,
-              top: 0,
-              right: 0,
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              userSelect: 'none',
+              padding: 10,
+              marginBottom: 10,
+              ...provided.draggableProps.style,
             }}
           >
-            <IconButton
-              size="small"
-              onClick={() => {
-                clearInterval(interval.current);
-                props.onClose();
+            <div
+              style={{
+                width: '60px',
+                height: 'max-content',
+                display: 'flex',
+                justifyContent: 'space-between',
+                flexDirection: 'row-reverse',
+                position: 'absolute',
+                padding: 8,
+                top: 0,
+                right: 0,
               }}
             >
-              <CloseIcon
-                className={
-                  getTextColor(props.item.color || '#D1D1D1', true)
-                    ? classes.buttonDark
-                    : classes.buttonLight
-                }
-              />
-            </IconButton>
+              <IconButton
+                size="small"
+                onClick={() => {
+                  clearInterval(interval.current);
+                  props.onClose();
+                }}
+              >
+                <CloseIcon
+                  className={
+                    getTextColor(props.item.color || '#D1D1D1', true)
+                      ? classes.buttonDark
+                      : classes.buttonLight
+                  }
+                />
+              </IconButton>
 
-            <IconButton size="small" onClick={props.onEdit}>
-              <EditIcon
-                className={
-                  getTextColor(props.item.color || '#D1D1D1', true)
-                    ? classes.buttonDark
-                    : classes.buttonLight
-                }
-              />
-            </IconButton>
-          </div>
+              <IconButton size="small" onClick={props.requestEdit}>
+                <EditIcon
+                  className={
+                    getTextColor(props.item.color || '#D1D1D1', true)
+                      ? classes.buttonDark
+                      : classes.buttonLight
+                  }
+                />
+              </IconButton>
+            </div>
 
-          <div
-            style={{
-              wordWrap: 'break-word',
-              overflow: 'hidden',
-              textAlign: 'center',
-              width: '100%',
-              fontSize: '20px',
-              marginBottom: '15px',
-              color: getTextColor(props.item.color || '#D1D1D1'),
-            }}
-          >
-            {props.item.name}
+            <div
+              style={{
+                wordWrap: 'break-word',
+                overflow: 'hidden',
+                textAlign: 'center',
+                width: '370px',
+                fontSize: '20px',
+                marginBottom: '15px',
+                color: getTextColor(props.item.color || '#D1D1D1'),
+              }}
+            >
+              {props.item.name}
+            </div>
+            <div
+              style={{
+                width: '100%',
+                height: '24px',
+                fontSize: '18px',
+                textAlign: 'center',
+                overflow: 'hidden',
+                color: getTextColor(props.item.color || '#D1D1D1'),
+              }}
+            >
+              {props.item.type == 'standard'
+                ? state.msg
+                : props.item.type == 'interval'
+                ? state.next
+                : props.item.data}
+            </div>
+            <div
+              style={{
+                textAlign: 'center',
+                fontSize: '13px',
+                color: getTextColor(props.item.color || '#D1D1D1'),
+                opacity: '0.5',
+              }}
+            >
+              {props.item.type == 'standard' ? (
+                dayjs(props.item.data)
+                  .tz('Etc/GMT-3')
+                  .format('YYYY-MM-DD hh:mm A')
+              ) : props.item.type == 'interval' ? (
+                <div>
+                  {state.completed} <br />
+                  {state.last}
+                </div>
+              ) : (
+                ''
+              )}
+            </div>
+
+            {provided.placeholder}
           </div>
-          <div
-            style={{
-              width: '100%',
-              height: '24px',
-              fontSize: '18px',
-              textAlign: 'center',
-              overflow: 'hidden',
-              color: getTextColor(props.item.color || '#D1D1D1'),
-            }}
-          >
-            {props.item.type == 'standard' ? state.msg : state.next}
-          </div>
-          <div
-            style={{
-              textAlign: 'center',
-              fontSize: '13px',
-              color: getTextColor(props.item.color || '#D1D1D1'),
-              opacity: '0.5',
-            }}
-          >
-            {props.item.type == 'standard' ? (
-              dayjs(props.item.data)
-                .tz('Etc/GMT-3')
-                .format('YYYY-MM-DD hh:mm A')
-            ) : (
-              <div>
-                {state.completed} <br />
-                {state.last}
-              </div>
-            )}
-          </div>
-          <div
-            style={{
-              width: 'max-content',
-              height: 'max-content',
-              display: 'flex',
-              justifyContent: 'space-between',
-              flexDirection: 'row-reverse',
-              position: 'absolute',
-              padding: 8,
-              top: 0,
-              left: 0,
-            }}
-            {...provided.dragHandleProps}
-          >
-            <DragIcon size="small" />
-          </div>
-        </div>
-      )}
+        );
+      }}
     </Draggable>
   );
 }

@@ -24,7 +24,9 @@ function CreateMenu(props) {
   const [state, setState] = useState({
     standard: true,
     sequence: false,
+    note: false,
     name: 'Unnamed',
+    description: 'No description.',
     time: format(Date.now()),
     interval: '7',
     initial: format(Date.now()),
@@ -46,6 +48,7 @@ function CreateMenu(props) {
       ...state,
       standard: false,
       sequence: false,
+      note: false,
       [event.target.name]: event.target.checked,
     });
   };
@@ -55,10 +58,25 @@ function CreateMenu(props) {
   };
 
   const onSubmit = () => {
-    if (state.name == '') return;
+    if (
+      !props.isStringValid(
+        state.name,
+        props.editing.status
+          ? {
+              name:
+                props.editing.item.index < 0
+                  ? props.editing.category.data.title
+                  : props.editing.item.data.name,
+              category: props.editing.item.index < 0,
+            }
+          : null
+      )
+    )
+      return;
 
-    if (!props.disableCategory) {
+    if (props.category) {
       props.onCreate({
+        collapse: false,
         title: state.name,
         color: state.color,
         items: [],
@@ -97,32 +115,68 @@ function CreateMenu(props) {
       }
       return;
     }
+
+    if (state.note && state.description != '') {
+      props.onCreate({
+        name: state.name,
+        data: state.description,
+        type: 'note',
+        color: state.color,
+      });
+    }
   };
 
   useEffect(() => {
     const now = format(Date.now());
 
-    if (props.item == undefined) {
+    if (!props.editing.status) {
       setState({
         standard: true,
         sequence: false,
+        note: false,
         name: 'Unnamed',
+        description: 'No description.',
         time: now,
         interval: '7',
         initial: now,
         color: '#d1d1d1',
       });
     } else {
-      setState({
-        standard: props.item.type == 'standard',
-        sequence: props.item.type == 'interval',
-        name: props.item.name,
-        time: props.item.type == 'standard' ? format(props.item.data) : now,
-        interval: props.item.type == 'interval' ? props.item.data.days : '7',
-        initial:
-          props.item.type == 'interval' ? format(props.item.data.initial) : now,
-        color: props.item.color || '#d1d1d1',
-      });
+      let object = {};
+
+      if (props.editing.item.index < 0) {
+        object = {
+          ...state,
+          name: props.editing.category.data.title,
+          color: props.editing.category.data.color || '#d1d1d1',
+        };
+      } else {
+        object = {
+          standard: props.editing.item.data.type == 'standard',
+          sequence: props.editing.item.data.type == 'interval',
+          note: props.editing.item.data.type == 'note',
+          name: props.editing.item.data.name,
+          description:
+            props.editing.item.data.type == 'note'
+              ? props.editing.item.data.data
+              : 'No description.',
+          time:
+            props.editing.item.data.type == 'standard'
+              ? format(props.editing.item.data.data)
+              : now,
+          interval:
+            props.editing.item.data.type == 'interval'
+              ? props.editing.item.data.data.days
+              : '7',
+          initial:
+            props.editing.item.data.type == 'interval'
+              ? format(props.editing.item.data.data.initial)
+              : now,
+          color: props.editing.item.data.color || '#d1d1d1',
+        };
+      }
+
+      setState(object);
     }
   }, [props.id]);
 
@@ -169,7 +223,7 @@ function CreateMenu(props) {
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              alignItems: 'center',
+              alignItems: 'left',
               marginRight: '20px',
             }}
             noValidate
@@ -182,13 +236,12 @@ function CreateMenu(props) {
               onChange={handleFieldChange}
               className={classes.textField}
             />
-            {state.standard && props.disableCategory && (
+            {state.standard && !props.category && (
               <TextField
                 label="Time"
                 name="time"
                 value={state.time}
                 onChange={handleFieldChange}
-                disabled={state.sequence}
                 className={classes.textField}
               />
             )}
@@ -198,7 +251,6 @@ function CreateMenu(props) {
                 name="interval"
                 value={state.interval}
                 onChange={handleFieldChange}
-                disabled={state.standard}
                 className={classes.textField}
                 InputProps={{
                   endAdornment: (
@@ -213,13 +265,21 @@ function CreateMenu(props) {
                 name="initial"
                 value={state.initial}
                 onChange={handleFieldChange}
-                disabled={state.standard}
+                className={classes.textField}
+              />
+            )}
+            {state.note && (
+              <TextField
+                label="Description"
+                name="description"
+                value={state.description}
+                onChange={handleFieldChange}
                 className={classes.textField}
               />
             )}
           </form>
           <FormGroup column>
-            {props.disableCategory && (
+            {!props.category && (
               <FormControlLabel
                 control={
                   <Checkbox
@@ -232,7 +292,7 @@ function CreateMenu(props) {
                 label="Standard"
               />
             )}
-            {props.disableCategory && (
+            {!props.category && (
               <FormControlLabel
                 control={
                   <Checkbox
@@ -243,6 +303,19 @@ function CreateMenu(props) {
                   />
                 }
                 label="Sequence"
+              />
+            )}
+            {!props.category && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={state.note}
+                    onChange={handleChange}
+                    name="note"
+                    color="primary"
+                  />
+                }
+                label="Note"
               />
             )}
           </FormGroup>

@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
-import CreateMenu from '../../containers/CreateMenu';
-import Category from '../../containers/Category';
+import CreateMenu from '../../containers/CreateMenu Copy';
 import Item from '../../containers/Item';
 import IconButton from '@material-ui/core/IconButton';
 import DownloadIcon from '@material-ui/icons/GetApp';
@@ -39,9 +38,11 @@ const SortableList = SortableContainer(({ items }) => {
   return (
     <div
       style={{
-        width: '100%',
+        width: '95%',
         display: 'flex',
         flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
       }}
     >
       {items.items.map((value, index) => (
@@ -73,8 +74,9 @@ class Popup extends Component {
     this.intervals = [];
     this.fileInput = React.createRef(null);
 
-    // localStorage.setItem('items', '');
     this.loadItems();
+
+    chrome.runtime.sendMessage({ items: localStorage.getItem('items') });
   }
 
   downloadData() {
@@ -116,6 +118,7 @@ class Popup extends Component {
       console.log('Initialized data');
     } else {
       let items = JSON.parse(localStorage.getItem('items'));
+      console.log(localStorage.getItem('items'));
 
       items = items.map((item) => {
         if (item.type == 'interval') {
@@ -125,6 +128,7 @@ class Popup extends Component {
             data: {
               days: item.data.days,
               initial: new Date(Date.parse(item.data.initial)),
+              seen: new Date(Date.now()),
             },
             color: item.color,
           };
@@ -146,16 +150,24 @@ class Popup extends Component {
           console.log('Loaded data');
         });
       }
-      // console.log(JSON.stringify([{
-      // name: 'main',
-      // items: this.state.items
-      // }]));
     }
   }
 
   saveItems() {
-    localStorage.setItem('items', JSON.stringify(this.state.items));
+    let data = JSON.stringify(this.state.items);
+
+    chrome.runtime.sendMessage({ items: data });
+    localStorage.setItem('items', data);
+
     console.log('Saved data');
+  }
+
+  onCancel() {
+    this.setState({
+      ...this.state,
+      creating: false,
+      editing: -1,
+    });
   }
 
   onCreate(result) {
@@ -252,14 +264,12 @@ class Popup extends Component {
           style={{
             marginTop: 60,
             padding: 10,
-            backgroundColor: 'red',
             display: this.state.creating ? 'none' : 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
           }}
         >
-          {/* <Category id={uuidv4()} title="upcoming movies & series"></Category> */}
           <SortableList
             items={{
               items: this.state.items,
@@ -275,6 +285,7 @@ class Popup extends Component {
         <CreateMenu
           id={uuidv4()}
           onCreate={this.onCreate.bind(this)}
+          onCancel={this.onCancel.bind(this)}
           disabled={!this.state.creating}
           item={
             this.state.editing > -1
